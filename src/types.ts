@@ -11,24 +11,10 @@ export interface GeneratedOptions {
 
 export type Screen = 'welcome' | 'round-intro' | 'question' | 'final'
 
-export interface AppState {
-  screen: Screen
-  roundIndex: number
-  questionIndex: number
-  revealed: boolean
-  optionsCache: Map<string, GeneratedOptions>
-  isGenerating: boolean
-  timerDuration: 30 | 60 | 90 | null
-  timerEnd: number | null
-  timerActive: boolean
-  teams: Team[]
-  scoreboardOpen: boolean
-  apiKey: string
-}
-
 export interface Question {
   question: string
   answer: string
+  wrongAnswers: [string, string, string]
 }
 
 export interface Round {

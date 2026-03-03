@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { Screen, Team, GeneratedOptions } from './types'
+import { Screen, Team, GeneratedOptions, Round } from './types'
 import { ROUNDS } from './questions'
-import { generateWrongAnswers } from './claude'
 import Snowfall from './components/Snowfall'
 import Mountains from './components/Mountains'
 import Timer from './components/Timer'
@@ -27,13 +26,22 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+function loadRounds(): Round[] {
+  try {
+    const saved = localStorage.getItem('trivia_rounds')
+    return saved ? (JSON.parse(saved) as Round[]) : ROUNDS
+  } catch {
+    return ROUNDS
+  }
+}
+
 export default function App() {
-  // API key
-  const [apiKey, setApiKey] = useState<string>(
-    () => import.meta.env.VITE_ANTHROPIC_API_KEY as string || localStorage.getItem('trivia_api_key') || ''
-  )
-  const [apiKeyInput, setApiKeyInput] = useState('')
-  const [showApiSettings, setShowApiSettings] = useState(false)
+  // Rounds state — editable, persisted to localStorage
+  const [rounds, setRounds] = useState<Round[]>(loadRounds)
+
+  useEffect(() => {
+    localStorage.setItem('trivia_rounds', JSON.stringify(rounds))
+  }, [rounds])
 
   // Navigation
   const [screen, setScreen] = useState<Screen>('welcome')
@@ -43,8 +51,6 @@ export default function App() {
   // Question state
   const [revealed, setRevealed] = useState(false)
   const [optionsCache, setOptionsCache] = useState<Map<string, GeneratedOptions>>(new Map())
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generateError, setGenerateError] = useState<string | null>(null)
 
   // Timer
   const [timerDuration, setTimerDuration] = useState<30 | 60 | 90>(30)
@@ -55,88 +61,81 @@ export default function App() {
   const [teams, setTeams] = useState<Team[]>([])
   const [scoreboardOpen, setScoreboardOpen] = useState(false)
 
-  const timerStopRef = useRef<() => void>(() => {})
+  // Edit modal
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editQ, setEditQ] = useState('')
+  const [editOpts, setEditOpts] = useState<[string, string, string, string]>(['', '', '', ''])
+  const [editCorrect, setEditCorrect] = useState(0)
 
-  const currentRound = ROUNDS[roundIndex]
+  const currentRound = rounds[roundIndex]
   const currentQuestion = currentRound?.questions[questionIndex]
   const cKey = cacheKey(roundIndex, questionIndex)
   const cachedOptions = optionsCache.get(cKey) ?? null
 
-  // Stop timer on nav
   const stopTimer = useCallback(() => {
     setTimerActive(false)
     setTimerEnd(null)
   }, [])
-  timerStopRef.current = stopTimer
 
-  const navigate = useCallback((newRound: number, newQuestion: number) => {
-    setRevealed(false)
-    setGenerateError(null)
-    stopTimer()
-    setRoundIndex(newRound)
-    setQuestionIndex(newQuestion)
-  }, [stopTimer])
+  const navigate = useCallback(
+    (newRound: number, newQuestion: number) => {
+      setRevealed(false)
+      stopTimer()
+      setRoundIndex(newRound)
+      setQuestionIndex(newQuestion)
+    },
+    [stopTimer]
+  )
 
-  const goToQuestion = useCallback((r: number, q: number) => {
-    navigate(r, q)
-    setScreen('question')
-  }, [navigate])
+  const goToQuestion = useCallback(
+    (r: number, q: number) => {
+      navigate(r, q)
+      setScreen('question')
+    },
+    [navigate]
+  )
 
   const handleNext = useCallback(() => {
     const qCount = currentRound.questions.length
     if (questionIndex < qCount - 1) {
       goToQuestion(roundIndex, questionIndex + 1)
-    } else if (roundIndex < ROUNDS.length - 1) {
+    } else if (roundIndex < rounds.length - 1) {
       navigate(roundIndex + 1, 0)
       setScreen('round-intro')
     } else {
       setScreen('final')
     }
-  }, [roundIndex, questionIndex, currentRound, goToQuestion, navigate])
+  }, [roundIndex, questionIndex, currentRound, rounds.length, goToQuestion, navigate])
 
   const handlePrev = useCallback(() => {
     if (questionIndex > 0) {
       goToQuestion(roundIndex, questionIndex - 1)
     } else if (roundIndex > 0) {
-      const prevRound = ROUNDS[roundIndex - 1]
+      const prevRound = rounds[roundIndex - 1]
       goToQuestion(roundIndex - 1, prevRound.questions.length - 1)
     }
-  }, [roundIndex, questionIndex, goToQuestion])
+  }, [roundIndex, questionIndex, rounds, goToQuestion])
 
-  const handleRoundTab = useCallback((r: number) => {
-    navigate(r, 0)
-    setScreen('round-intro')
-  }, [navigate])
+  const handleRoundTab = useCallback(
+    (r: number) => {
+      navigate(r, 0)
+      setScreen('round-intro')
+    },
+    [navigate]
+  )
 
-  const handleRoundStart = useCallback(() => {
-    setScreen('question')
-  }, [])
-
-  const handleGenerate = useCallback(async () => {
-    if (!apiKey) {
-      setGenerateError('Please enter your Anthropic API key in settings.')
-      return
-    }
+  // Generate options instantly from hardcoded data
+  const handleGenerate = useCallback(() => {
     if (cachedOptions) return
-    setIsGenerating(true)
-    setGenerateError(null)
-    try {
-      const wrong = await generateWrongAnswers(apiKey, currentQuestion.question, currentQuestion.answer)
-      const all = shuffle([currentQuestion.answer, ...wrong])
-      const correctIndex = all.indexOf(currentQuestion.answer)
-      const generated: GeneratedOptions = { options: all, correctIndex }
-      setOptionsCache((prev) => new Map(prev).set(cKey, generated))
-    } catch (e) {
-      setGenerateError(e instanceof Error ? e.message : 'Failed to generate options')
-    } finally {
-      setIsGenerating(false)
-    }
-  }, [apiKey, cachedOptions, currentQuestion, cKey])
+    const q = currentQuestion
+    const all = shuffle([q.answer, ...q.wrongAnswers])
+    const correctIndex = all.indexOf(q.answer)
+    setOptionsCache((prev) => new Map(prev).set(cKey, { options: all, correctIndex }))
+  }, [cachedOptions, currentQuestion, cKey])
 
   const handleReveal = useCallback(() => {
     if (!cachedOptions) return
     setRevealed(true)
-    // Confetti burst
     confetti({
       particleCount: 80,
       spread: 70,
@@ -166,7 +165,7 @@ export default function App() {
 
   const handleAddPoints = useCallback((id: string, points: number) => {
     setTeams((t) =>
-      t.map((team) => team.id === id ? { ...team, score: Math.max(0, team.score + points) } : team)
+      t.map((team) => (team.id === id ? { ...team, score: Math.max(0, team.score + points) } : team))
     )
   }, [])
 
@@ -180,21 +179,70 @@ export default function App() {
     setTeams([])
   }, [stopTimer])
 
-  const handleSaveApiKey = () => {
-    const key = apiKeyInput.trim()
-    if (key) {
-      setApiKey(key)
-      localStorage.setItem('trivia_api_key', key)
-      setApiKeyInput('')
-      setShowApiSettings(false)
-    }
-  }
+  // ── Edit modal ────────────────────────────────────────────────────────────
 
-  // Keyboard shortcuts
+  const openEdit = useCallback(() => {
+    const q = currentQuestion
+    if (cachedOptions) {
+      setEditOpts(cachedOptions.options as [string, string, string, string])
+      setEditCorrect(cachedOptions.correctIndex)
+    } else {
+      setEditOpts([q.answer, ...q.wrongAnswers] as [string, string, string, string])
+      setEditCorrect(0)
+    }
+    setEditQ(q.question)
+    setShowEditModal(true)
+  }, [currentQuestion, cachedOptions])
+
+  const saveEdit = useCallback(() => {
+    const trimmedQ = editQ.trim()
+    if (!trimmedQ) return
+    const trimmedOpts = editOpts.map((o) => o.trim()) as [string, string, string, string]
+
+    setRounds((prev) =>
+      prev.map((round, ri) =>
+        ri !== roundIndex
+          ? round
+          : {
+              ...round,
+              questions: round.questions.map((q, qi) =>
+                qi !== questionIndex
+                  ? q
+                  : {
+                      question: trimmedQ,
+                      answer: trimmedOpts[editCorrect],
+                      wrongAnswers: trimmedOpts.filter((_, i) => i !== editCorrect) as [
+                        string,
+                        string,
+                        string,
+                      ],
+                    }
+              ),
+            }
+      )
+    )
+    // Update cache so the display is immediately correct
+    setOptionsCache((prev) =>
+      new Map(prev).set(cKey, { options: [...trimmedOpts], correctIndex: editCorrect })
+    )
+    setShowEditModal(false)
+  }, [editQ, editOpts, editCorrect, roundIndex, questionIndex, cKey])
+
+  const resetToDefaults = useCallback(() => {
+    if (!confirm('Reset ALL questions to the original defaults? This cannot be undone.')) return
+    setRounds(ROUNDS)
+    setOptionsCache(new Map())
+    localStorage.removeItem('trivia_rounds')
+    setShowEditModal(false)
+  }, [])
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (screen !== 'question') return
-      if (e.target instanceof HTMLInputElement) return
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (showEditModal) return
       if (e.key === 'ArrowRight') handleNext()
       if (e.key === 'ArrowLeft') handlePrev()
       if (e.key === 'r' || e.key === 'R') handleReveal()
@@ -202,23 +250,18 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [screen, handleNext, handlePrev, handleReveal, handleGenerate])
+  }, [screen, showEditModal, handleNext, handlePrev, handleReveal, handleGenerate])
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-navy select-none">
       <Snowfall />
       <Mountains />
 
-      {/* Main content */}
       <div className="relative z-10 w-full h-full flex flex-col">
         <AnimatePresence mode="wait">
           {screen === 'welcome' && (
             <WelcomeScreen
               key="welcome"
-              apiKey={apiKey}
-              apiKeyInput={apiKeyInput}
-              setApiKeyInput={setApiKeyInput}
-              onSaveKey={handleSaveApiKey}
               onStart={() => {
                 setScreen('round-intro')
                 setRoundIndex(0)
@@ -236,6 +279,7 @@ export default function App() {
               className="flex-1 flex flex-col"
             >
               <TopBar
+                rounds={rounds}
                 roundIndex={roundIndex}
                 questionIndex={questionIndex}
                 totalQuestions={currentRound.questions.length}
@@ -243,7 +287,6 @@ export default function App() {
                 timerEnd={timerEnd}
                 timerActive={timerActive}
                 onRoundTab={handleRoundTab}
-                onTimerStart={handleTimerStart}
                 onTimerStop={handleTimerStop}
                 showTimer={false}
               />
@@ -252,7 +295,7 @@ export default function App() {
                   roundNumber={roundIndex + 1}
                   roundTitle={currentRound.title}
                   questionCount={currentRound.questions.length}
-                  onStart={handleRoundStart}
+                  onStart={() => setScreen('question')}
                 />
               </div>
             </motion.div>
@@ -268,6 +311,7 @@ export default function App() {
               className="flex-1 flex flex-col"
             >
               <TopBar
+                rounds={rounds}
                 roundIndex={roundIndex}
                 questionIndex={questionIndex}
                 totalQuestions={currentRound.questions.length}
@@ -275,15 +319,26 @@ export default function App() {
                 timerEnd={timerEnd}
                 timerActive={timerActive}
                 onRoundTab={handleRoundTab}
-                onTimerStart={handleTimerStart}
                 onTimerStop={handleTimerStop}
                 showTimer
               />
 
-              <div className="flex-1 flex flex-col px-6 pb-6 gap-4" style={{ paddingRight: scoreboardOpen ? '272px' : '80px' }}>
-                {/* Round & question label */}
-                <div className="font-bebas text-ice-blue text-xl tracking-widest mt-2">
-                  ROUND {roundIndex + 1}: {currentRound.title}
+              <div
+                className="flex-1 flex flex-col px-6 pb-6 gap-4"
+                style={{ paddingRight: scoreboardOpen ? '272px' : '80px' }}
+              >
+                {/* Round label + edit button */}
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="font-bebas text-ice-blue text-xl tracking-widest">
+                    ROUND {roundIndex + 1}: {currentRound.title}
+                  </div>
+                  <button
+                    onClick={openEdit}
+                    title="Edit this question"
+                    className="text-white/30 hover:text-gold transition-colors text-lg"
+                  >
+                    ✏
+                  </button>
                 </div>
 
                 {/* Question */}
@@ -292,22 +347,19 @@ export default function App() {
                 </div>
 
                 {/* Answer tiles */}
-                <div className="grid grid-cols-2 gap-4 max-w-3xl flex-1 min-h-0" style={{ maxHeight: '280px' }}>
+                <div
+                  className="grid grid-cols-2 gap-4 max-w-3xl flex-1 min-h-0"
+                  style={{ maxHeight: '280px' }}
+                >
                   {TILE_LABELS.map((label, i) => {
                     const text = cachedOptions ? cachedOptions.options[i] : null
                     const isCorrect = cachedOptions ? i === cachedOptions.correctIndex : false
                     const isWrong = revealed && !isCorrect
-
                     let bg = TILE_COLORS[i]
                     let scale = 1
                     let opacity = 1
-
-                    if (revealed && isCorrect) {
-                      bg = '#22C55E'
-                      scale = 1.04
-                    } else if (revealed && isWrong) {
-                      opacity = 0.35
-                    }
+                    if (revealed && isCorrect) { bg = '#22C55E'; scale = 1.04 }
+                    else if (revealed && isWrong) { opacity = 0.35 }
 
                     return (
                       <motion.div
@@ -326,28 +378,20 @@ export default function App() {
                   })}
                 </div>
 
-                {/* Error */}
-                {generateError && (
-                  <div className="text-red-400 text-sm bg-red-900/20 rounded px-3 py-2 max-w-xl">
-                    {generateError}
-                  </div>
-                )}
-
                 {/* Controls */}
                 <div className="flex items-center gap-3 flex-wrap">
                   <button
                     onClick={handleGenerate}
-                    disabled={isGenerating || !!cachedOptions}
+                    disabled={!!cachedOptions}
                     className="bg-ice-blue hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bebas text-lg px-5 py-2 rounded-lg transition-colors"
                   >
-                    {isGenerating ? 'GENERATING...' : cachedOptions ? 'OPTIONS READY' : 'GENERATE OPTIONS'}
+                    {cachedOptions ? 'OPTIONS READY' : 'SHOW OPTIONS'}
                   </button>
 
-                  {/* Timer buttons */}
                   {([30, 60, 90] as const).map((d) => (
                     <button
                       key={d}
-                      onClick={() => timerActive ? handleTimerStop() : handleTimerStart(d)}
+                      onClick={() => (timerActive && timerDuration === d ? handleTimerStop() : handleTimerStart(d))}
                       className={`font-bebas text-lg px-4 py-2 rounded-lg transition-colors ${
                         timerActive && timerDuration === d
                           ? 'bg-red-500 hover:bg-red-400 text-white'
@@ -409,46 +453,111 @@ export default function App() {
         onAddPoints={handleAddPoints}
       />
 
-      {/* API key settings popover */}
-      <div className="fixed bottom-3 left-3 z-50">
-        <button
-          onClick={() => setShowApiSettings((s) => !s)}
-          className="text-white/40 hover:text-white/80 text-xs transition-colors"
-        >
-          ⚙ API Settings
-        </button>
-        <AnimatePresence>
-          {showApiSettings && (
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4"
+            onClick={(e) => e.target === e.currentTarget && setShowEditModal(false)}
+          >
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="absolute bottom-8 left-0 bg-navy border border-ice-blue/40 rounded-xl p-4 shadow-xl w-80"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0F2540] border border-ice-blue/40 rounded-2xl p-6 w-full max-w-2xl shadow-2xl"
             >
-              <h3 className="font-bebas text-white text-xl mb-3">ANTHROPIC API KEY</h3>
-              {apiKey && (
-                <p className="text-white/50 text-xs mb-2">
-                  Current: {apiKey.slice(0, 12)}...
-                </p>
-              )}
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveApiKey()}
-                placeholder="sk-ant-..."
-                className="w-full bg-white/10 text-white placeholder-white/30 rounded px-3 py-2 text-sm border border-ice-blue/30 focus:border-ice-blue outline-none mb-3"
+              <h2 className="font-bebas text-gold text-3xl tracking-widest mb-4">
+                EDIT QUESTION — R{roundIndex + 1} Q{questionIndex + 1}
+              </h2>
+
+              {/* Question text */}
+              <label className="text-white/60 text-xs uppercase tracking-widest mb-1 block">Question</label>
+              <textarea
+                value={editQ}
+                onChange={(e) => setEditQ(e.target.value)}
+                rows={2}
+                className="w-full bg-white/10 text-white rounded-lg px-3 py-2 text-lg border border-ice-blue/30 focus:border-ice-blue outline-none resize-none mb-4"
               />
-              <button
-                onClick={handleSaveApiKey}
-                className="w-full bg-gold hover:bg-yellow-400 text-navy font-bebas py-2 rounded-lg transition-colors"
-              >
-                SAVE KEY
-              </button>
+
+              {/* Answer options */}
+              <label className="text-white/60 text-xs uppercase tracking-widest mb-2 block">
+                Answers — click <span className="text-green-400">★ mark correct</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                {editOpts.map((opt, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-2 rounded-lg border p-2 transition-colors ${
+                      editCorrect === i ? 'border-green-400 bg-green-900/20' : 'border-white/20 bg-white/5'
+                    }`}
+                  >
+                    <button
+                      onClick={() => setEditCorrect(i)}
+                      title="Mark as correct answer"
+                      className={`shrink-0 text-xl transition-colors ${
+                        editCorrect === i ? 'text-green-400' : 'text-white/20 hover:text-white/60'
+                      }`}
+                    >
+                      ★
+                    </button>
+                    <span
+                      className="font-bebas text-lg shrink-0"
+                      style={{ color: TILE_COLORS[i] === '#1A3A5C' ? '#5B9BD5' : TILE_COLORS[i] }}
+                    >
+                      {TILE_LABELS[i]}
+                    </span>
+                    <input
+                      type="text"
+                      value={opt}
+                      onChange={(e) => {
+                        const updated = [...editOpts] as [string, string, string, string]
+                        updated[i] = e.target.value
+                        setEditOpts(updated)
+                      }}
+                      className="flex-1 bg-transparent text-white text-sm outline-none placeholder-white/30"
+                      placeholder={`Option ${TILE_LABELS[i]}`}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-between">
+                <button
+                  onClick={resetToDefaults}
+                  className="text-white/30 hover:text-red-400 text-sm transition-colors"
+                >
+                  Reset all to defaults
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="bg-white/10 hover:bg-white/20 text-white font-bebas text-lg px-6 py-2 rounded-lg transition-colors"
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    className="bg-gold hover:bg-yellow-400 text-navy font-bebas text-lg px-8 py-2 rounded-lg transition-colors"
+                  >
+                    SAVE
+                  </button>
+                </div>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyboard hint */}
+      {screen === 'question' && (
+        <div className="fixed bottom-2 left-3 z-20 text-white/20 text-xs pointer-events-none">
+          ← → navigate · G show options · R reveal · ✏ edit question
+        </div>
+      )}
     </div>
   )
 }
@@ -456,6 +565,7 @@ export default function App() {
 // ─── Top Bar ────────────────────────────────────────────────────────────────
 
 interface TopBarProps {
+  rounds: Round[]
   roundIndex: number
   questionIndex: number
   totalQuestions: number
@@ -463,12 +573,12 @@ interface TopBarProps {
   timerEnd: number | null
   timerActive: boolean
   onRoundTab: (r: number) => void
-  onTimerStart: (d: 30 | 60 | 90) => void
   onTimerStop: () => void
   showTimer: boolean
 }
 
 function TopBar({
+  rounds,
   roundIndex,
   questionIndex,
   totalQuestions,
@@ -481,9 +591,8 @@ function TopBar({
 }: TopBarProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-white/5 border-b border-white/10 z-20">
-      {/* Round tabs */}
       <div className="flex gap-1">
-        {ROUNDS.map((_, i) => (
+        {rounds.map((_, i) => (
           <button
             key={i}
             onClick={() => onRoundTab(i)}
@@ -500,14 +609,12 @@ function TopBar({
 
       <div className="w-px h-6 bg-white/20" />
 
-      {/* Question counter */}
       <span className="text-white/60 text-sm font-mono">
         Q {questionIndex + 1}/{totalQuestions}
       </span>
 
       <div className="flex-1" />
 
-      {/* Timer display */}
       {showTimer && timerActive && (
         <div onClick={onTimerStop} className="cursor-pointer">
           <Timer
@@ -519,7 +626,6 @@ function TopBar({
         </div>
       )}
 
-      {/* Spacer for scoreboard button */}
       <div className="w-28" />
     </div>
   )
@@ -527,15 +633,7 @@ function TopBar({
 
 // ─── Welcome Screen ──────────────────────────────────────────────────────────
 
-interface WelcomeProps {
-  apiKey: string
-  apiKeyInput: string
-  setApiKeyInput: (v: string) => void
-  onSaveKey: () => void
-  onStart: () => void
-}
-
-function WelcomeScreen({ apiKey, apiKeyInput, setApiKeyInput, onSaveKey, onStart }: WelcomeProps) {
+function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <motion.div
       key="welcome"
@@ -544,14 +642,9 @@ function WelcomeScreen({ apiKey, apiKeyInput, setApiKeyInput, onSaveKey, onStart
       exit={{ opacity: 0 }}
       className="flex-1 flex flex-col items-center justify-center gap-8 px-8"
     >
-      {/* Olympic rings */}
       <div className="flex gap-4 mb-2">
         {['#1A3A5C', '#5B9BD5', '#C9A84C', '#CBD5E1', '#5B9BD5'].map((color, i) => (
-          <div
-            key={i}
-            className="w-12 h-12 rounded-full border-4"
-            style={{ borderColor: color }}
-          />
+          <div key={i} className="w-12 h-12 rounded-full border-4" style={{ borderColor: color }} />
         ))}
       </div>
 
@@ -565,29 +658,6 @@ function WelcomeScreen({ apiKey, apiKeyInput, setApiKeyInput, onSaveKey, onStart
         <p className="text-white/50 mt-3 text-lg">5 Rounds · 50 Questions · Company Trivia Night</p>
       </div>
 
-      {!apiKey && (
-        <div className="bg-white/10 rounded-xl p-6 w-full max-w-md border border-ice-blue/30">
-          <h3 className="font-bebas text-white text-xl mb-1">ANTHROPIC API KEY REQUIRED</h3>
-          <p className="text-white/50 text-sm mb-4">
-            Used to generate wrong answer options via Claude AI
-          </p>
-          <input
-            type="password"
-            value={apiKeyInput}
-            onChange={(e) => setApiKeyInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && onSaveKey()}
-            placeholder="sk-ant-..."
-            className="w-full bg-white/10 text-white placeholder-white/30 rounded-lg px-4 py-3 border border-ice-blue/30 focus:border-ice-blue outline-none mb-3"
-          />
-          <button
-            onClick={onSaveKey}
-            className="w-full bg-ice-blue hover:bg-blue-400 text-white font-bebas text-xl py-2 rounded-lg transition-colors"
-          >
-            SAVE API KEY
-          </button>
-        </div>
-      )}
-
       <button
         onClick={onStart}
         className="bg-gold hover:bg-yellow-400 text-navy font-bebas text-3xl px-16 py-4 rounded-2xl transition-all shadow-2xl hover:scale-105 active:scale-95"
@@ -595,12 +665,8 @@ function WelcomeScreen({ apiKey, apiKeyInput, setApiKeyInput, onSaveKey, onStart
         START GAME
       </button>
 
-      {apiKey && (
-        <p className="text-white/30 text-sm">API key loaded ✓</p>
-      )}
-
       <div className="text-white/20 text-sm text-center">
-        ← → arrow keys to navigate · G to generate · R to reveal
+        ← → arrow keys to navigate · G to show options · R to reveal · ✏ to edit questions
       </div>
     </motion.div>
   )
