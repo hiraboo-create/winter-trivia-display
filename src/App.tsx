@@ -344,13 +344,13 @@ export default function App() {
                 </div>
 
                 {/* Question */}
-                <div className="font-bebas text-white text-4xl leading-tight max-w-4xl">
+                <div className="font-bebas text-white text-4xl leading-tight w-full">
                   {currentQuestion.question}
                 </div>
 
                 {/* Answer tiles */}
                 <div
-                  className="grid grid-cols-2 gap-4 max-w-3xl flex-1 min-h-0"
+                  className="grid grid-cols-2 gap-4 w-full flex-1 min-h-0"
                   style={{ maxHeight: '280px' }}
                 >
                   {TILE_LABELS.map((label, i) => {
@@ -670,7 +670,10 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
       <div className="w-80 h-1 brand-gradient rounded-full" />
 
       <div className="text-white/20 text-sm text-center">
-        ← → arrow keys to navigate · G to show options · R to reveal · ✏ to edit questions
+        ← → arrow keys to navigate · G to show options · R to reveal · ✏ edit question ·{' '}
+        <a href="/#admin" className="underline hover:text-white/40 transition-colors">
+          Edit all questions →
+        </a>
       </div>
     </motion.div>
   )
