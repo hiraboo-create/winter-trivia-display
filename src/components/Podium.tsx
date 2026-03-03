@@ -12,7 +12,6 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
   const sorted = [...teams].sort((a, b) => b.score - a.score).slice(0, 3)
 
   useEffect(() => {
-    // Big confetti burst
     const end = Date.now() + 4000
     const frame = () => {
       confetti({
@@ -20,14 +19,14 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
         angle: 60,
         spread: 55,
         origin: { x: 0 },
-        colors: ['#1A3A5C', '#5B9BD5', '#C9A84C', '#ffffff'],
+        colors: ['#00C4CC', '#6B3CC8', '#E0197D', '#ffffff'],
       })
       confetti({
         particleCount: 3,
         angle: 120,
         spread: 55,
         origin: { x: 1 },
-        colors: ['#1A3A5C', '#5B9BD5', '#C9A84C', '#ffffff'],
+        colors: ['#00C4CC', '#6B3CC8', '#E0197D', '#ffffff'],
       })
       if (Date.now() < end) requestAnimationFrame(frame)
     }
@@ -35,12 +34,10 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
   }, [])
 
   const podiumOrder = [
-    { rank: 1, team: sorted[0], height: 180, color: '#C9A84C', medal: '🥇', delay: 0.4 },
-    { rank: 2, team: sorted[1], height: 130, color: '#CBD5E1', medal: '🥈', delay: 0.2 },
-    { rank: 3, team: sorted[2], height: 90, color: '#CD7F32', medal: '🥉', delay: 0.0 },
+    { rank: 1, team: sorted[0], height: 180, bg: 'brand-gradient', medal: '🥇', delay: 0.4 },
+    { rank: 2, team: sorted[1], height: 130, bg: '#1A3A6C',         medal: '🥈', delay: 0.2 },
+    { rank: 3, team: sorted[2], height: 90,  bg: '#0D2240',         medal: '🥉', delay: 0.0 },
   ]
-
-  // Reorder: 2nd, 1st, 3rd
   const displayOrder = [podiumOrder[1], podiumOrder[0], podiumOrder[2]]
 
   return (
@@ -48,13 +45,13 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
       <motion.h1
         initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}
-        className="font-bebas text-gold text-7xl tracking-widest"
+        className="font-bebas text-7xl tracking-widest brand-gradient-text"
       >
         FINAL RESULTS
       </motion.h1>
 
       <div className="flex items-end justify-center gap-4">
-        {displayOrder.map(({ rank, team, height, color, medal, delay }) => (
+        {displayOrder.map(({ rank, team, height, bg, medal, delay }) => (
           <motion.div
             key={rank}
             initial={{ opacity: 0, y: 60 }}
@@ -66,12 +63,12 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
               <div className="mb-3 text-center">
                 <div className="text-4xl">{medal}</div>
                 <div className="font-bebas text-2xl text-white">{team.name}</div>
-                <div className="font-bebas text-3xl text-gold">{team.score} pts</div>
+                <div className="font-bebas text-3xl text-teal">{team.score} pts</div>
               </div>
             )}
             <div
-              className="w-40 flex items-center justify-center rounded-t-lg"
-              style={{ height: `${height}px`, backgroundColor: color }}
+              className={`w-40 flex items-center justify-center rounded-t-lg ${bg === 'brand-gradient' ? 'brand-gradient' : ''}`}
+              style={{ height: `${height}px`, ...(bg !== 'brand-gradient' ? { backgroundColor: bg } : {}) }}
             >
               <span className="font-bebas text-5xl text-white drop-shadow">{rank}</span>
             </div>
@@ -88,7 +85,7 @@ export default function Podium({ teams, onRestart }: PodiumProps) {
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2 }}
         onClick={onRestart}
-        className="bg-ice-blue hover:bg-blue-400 text-white font-bebas text-2xl px-12 py-3 rounded-xl transition-colors shadow-lg mt-4"
+        className="brand-gradient text-white font-bebas text-2xl px-12 py-3 rounded-xl shadow-lg hover:opacity-90 transition-opacity mt-4"
       >
         PLAY AGAIN
       </motion.button>

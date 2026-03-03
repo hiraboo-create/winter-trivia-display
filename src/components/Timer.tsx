@@ -54,7 +54,7 @@ export default function Timer({ duration, timerEnd, timerActive, onStop }: Timer
           cy="30"
           r={radius}
           fill="none"
-          stroke={isRed ? '#EF4444' : '#5B9BD5'}
+          stroke={isRed ? '#EF4444' : '#00C4CC'}
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={circumference}

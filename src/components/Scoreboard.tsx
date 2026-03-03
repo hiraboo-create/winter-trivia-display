@@ -36,7 +36,7 @@ export default function Scoreboard({
       {/* Toggle button */}
       <button
         onClick={onToggle}
-        className="fixed top-3 right-3 z-50 bg-ice-blue hover:bg-blue-400 text-white font-bebas text-lg px-4 py-2 rounded-lg transition-colors shadow-lg"
+        className="fixed top-3 right-3 z-50 bg-teal hover:opacity-80 text-navy font-bebas text-lg px-4 py-2 rounded-lg transition-opacity shadow-lg"
       >
         {open ? 'HIDE SCORES' : 'SCORES'}
       </button>
@@ -49,23 +49,23 @@ export default function Scoreboard({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 right-0 bottom-0 z-40 w-64 bg-navy border-l-2 border-ice-blue shadow-2xl flex flex-col"
+            className="fixed top-0 right-0 bottom-0 z-40 w-64 bg-[#071020] border-l-2 border-teal/50 shadow-2xl flex flex-col"
             style={{ paddingTop: '56px' }}
           >
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <h2 className="font-bebas text-2xl text-gold text-center tracking-widest">SCOREBOARD</h2>
+              <h2 className="font-bebas text-2xl text-teal text-center tracking-widest">SCOREBOARD</h2>
 
               {sorted.map((team, idx) => (
                 <div key={team.id} className="bg-white/10 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-gold font-bebas text-xl w-5 shrink-0">
+                      <span className="font-bebas text-xl w-5 shrink-0">
                         {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`}
                       </span>
                       <span className="text-white font-semibold truncate">{team.name}</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="font-bebas text-2xl text-gold w-8 text-right">{team.score}</span>
+                      <span className="font-bebas text-2xl text-teal w-8 text-right">{team.score}</span>
                       <button
                         onClick={() => onRemoveTeam(team.id)}
                         className="text-white/40 hover:text-red-400 text-xs ml-1 transition-colors"
@@ -78,13 +78,13 @@ export default function Scoreboard({
                   <div className="flex gap-2">
                     <button
                       onClick={() => onAddPoints(team.id, 1)}
-                      className="flex-1 bg-ice-blue/30 hover:bg-ice-blue/60 text-white text-sm font-bold py-1 rounded transition-colors"
+                      className="flex-1 bg-teal/20 hover:bg-teal/50 text-white text-sm font-bold py-1 rounded transition-colors"
                     >
                       +1
                     </button>
                     <button
                       onClick={() => onAddPoints(team.id, 2)}
-                      className="flex-1 bg-gold/30 hover:bg-gold/60 text-white text-sm font-bold py-1 rounded transition-colors"
+                      className="flex-1 bg-magenta/20 hover:bg-magenta/50 text-white text-sm font-bold py-1 rounded transition-colors"
                     >
                       +2
                     </button>
@@ -104,7 +104,7 @@ export default function Scoreboard({
             </div>
 
             {/* Add team */}
-            <div className="p-4 border-t border-ice-blue/30">
+            <div className="p-4 border-t border-teal/20">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -112,11 +112,11 @@ export default function Scoreboard({
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                   placeholder="Team name..."
-                  className="flex-1 bg-white/10 text-white placeholder-white/40 rounded px-3 py-2 text-sm outline-none border border-ice-blue/30 focus:border-ice-blue"
+                  className="flex-1 bg-white/10 text-white placeholder-white/40 rounded px-3 py-2 text-sm outline-none border border-teal/30 focus:border-teal"
                 />
                 <button
                   onClick={handleAdd}
-                  className="bg-gold hover:bg-yellow-400 text-navy font-bebas px-3 py-2 rounded transition-colors"
+                  className="bg-teal hover:opacity-80 text-navy font-bebas px-3 py-2 rounded transition-opacity"
                 >
                   ADD
                 </button>

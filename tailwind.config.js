@@ -4,9 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        navy: '#1A3A5C',
-        'ice-blue': '#5B9BD5',
-        gold: '#C9A84C',
+        navy:      '#081525',
+        teal:      '#00C4CC',
+        magenta:   '#E0197D',
+        purple:    '#6B3CC8',
+        'mid-blue':'#1A3A6C',
         'light-grey': '#CBD5E1',
       },
       fontFamily: {

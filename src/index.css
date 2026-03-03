@@ -4,7 +4,9 @@
 
 @layer base {
   body {
-    @apply bg-navy text-white overflow-hidden;
+    background-color: #081525;
+    color: white;
+    overflow: hidden;
     font-family: system-ui, sans-serif;
   }
 
@@ -16,5 +18,16 @@
 @layer utilities {
   .font-bebas {
     font-family: 'Bebas Neue', cursive;
+  }
+
+  .brand-gradient {
+    background: linear-gradient(135deg, #00C4CC 0%, #6B3CC8 50%, #E0197D 100%);
+  }
+
+  .brand-gradient-text {
+    background: linear-gradient(135deg, #00C4CC 0%, #6B3CC8 50%, #E0197D 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

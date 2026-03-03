@@ -9,8 +9,10 @@ import Timer from './components/Timer'
 import Scoreboard from './components/Scoreboard'
 import RoundIntro from './components/RoundIntro'
 import Podium from './components/Podium'
+import { OlympicRings } from './components/RoundIntro'
 
-const TILE_COLORS = ['#1A3A5C', '#5B9BD5', '#C9A84C', '#CBD5E1']
+// Milan–Cortina 2026 brand tile colors
+const TILE_COLORS = ['#0D2240', '#00C4CC', '#6B3CC8', '#E0197D']
 const TILE_LABELS = ['A', 'B', 'C', 'D']
 
 function cacheKey(r: number, q: number) {
@@ -329,13 +331,13 @@ export default function App() {
               >
                 {/* Round label + edit button */}
                 <div className="flex items-center gap-3 mt-2">
-                  <div className="font-bebas text-ice-blue text-xl tracking-widest">
+                  <div className="font-bebas text-teal text-xl tracking-widest">
                     ROUND {roundIndex + 1}: {currentRound.title}
                   </div>
                   <button
                     onClick={openEdit}
                     title="Edit this question"
-                    className="text-white/30 hover:text-gold transition-colors text-lg"
+                    className="text-white/30 hover:text-teal transition-colors text-lg"
                   >
                     ✏
                   </button>
@@ -383,7 +385,7 @@ export default function App() {
                   <button
                     onClick={handleGenerate}
                     disabled={!!cachedOptions}
-                    className="bg-ice-blue hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bebas text-lg px-5 py-2 rounded-lg transition-colors"
+                    className="bg-teal hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed text-navy font-bebas text-lg px-5 py-2 rounded-lg transition-opacity"
                   >
                     {cachedOptions ? 'OPTIONS READY' : 'SHOW OPTIONS'}
                   </button>
@@ -405,7 +407,7 @@ export default function App() {
                   <button
                     onClick={handleReveal}
                     disabled={!cachedOptions || revealed}
-                    className="bg-gold hover:bg-yellow-400 disabled:opacity-40 disabled:cursor-not-allowed text-navy font-bebas text-lg px-5 py-2 rounded-lg transition-colors"
+                    className="bg-magenta hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bebas text-lg px-5 py-2 rounded-lg transition-opacity"
                   >
                     {revealed ? 'REVEALED!' : 'REVEAL ANSWER'}
                   </button>
@@ -467,9 +469,9 @@ export default function App() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-[#0F2540] border border-ice-blue/40 rounded-2xl p-6 w-full max-w-2xl shadow-2xl"
+              className="bg-[#071020] border border-teal/30 rounded-2xl p-6 w-full max-w-2xl shadow-2xl"
             >
-              <h2 className="font-bebas text-gold text-3xl tracking-widest mb-4">
+              <h2 className="font-bebas text-teal text-3xl tracking-widest mb-4">
                 EDIT QUESTION — R{roundIndex + 1} Q{questionIndex + 1}
               </h2>
 
@@ -479,7 +481,7 @@ export default function App() {
                 value={editQ}
                 onChange={(e) => setEditQ(e.target.value)}
                 rows={2}
-                className="w-full bg-white/10 text-white rounded-lg px-3 py-2 text-lg border border-ice-blue/30 focus:border-ice-blue outline-none resize-none mb-4"
+                className="w-full bg-white/10 text-white rounded-lg px-3 py-2 text-lg border border-teal/30 focus:border-teal outline-none resize-none mb-4"
               />
 
               {/* Answer options */}
@@ -505,7 +507,7 @@ export default function App() {
                     </button>
                     <span
                       className="font-bebas text-lg shrink-0"
-                      style={{ color: TILE_COLORS[i] === '#1A3A5C' ? '#5B9BD5' : TILE_COLORS[i] }}
+                      style={{ color: TILE_COLORS[i] === '#0D2240' ? '#00C4CC' : TILE_COLORS[i] }}
                     >
                       {TILE_LABELS[i]}
                     </span>
@@ -541,7 +543,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={saveEdit}
-                    className="bg-gold hover:bg-yellow-400 text-navy font-bebas text-lg px-8 py-2 rounded-lg transition-colors"
+                    className="brand-gradient text-white font-bebas text-lg px-8 py-2 rounded-lg hover:opacity-90 transition-opacity"
                   >
                     SAVE
                   </button>
@@ -598,7 +600,7 @@ function TopBar({
             onClick={() => onRoundTab(i)}
             className={`font-bebas text-lg px-3 py-1 rounded transition-colors ${
               i === roundIndex
-                ? 'bg-ice-blue text-white'
+                ? 'bg-teal text-navy'
                 : 'text-white/50 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -642,17 +644,16 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
       exit={{ opacity: 0 }}
       className="flex-1 flex flex-col items-center justify-center gap-8 px-8"
     >
-      <div className="flex gap-4 mb-2">
-        {['#1A3A5C', '#5B9BD5', '#C9A84C', '#CBD5E1', '#5B9BD5'].map((color, i) => (
-          <div key={i} className="w-12 h-12 rounded-full border-4" style={{ borderColor: color }} />
-        ))}
-      </div>
+      {/* Gradient accent bar */}
+      <div className="w-80 h-1 brand-gradient rounded-full" />
+
+      <OlympicRings size={64} />
 
       <div className="text-center">
         <h1 className="font-bebas text-8xl text-white leading-none tracking-widest">
           WINTER TRIVIA
         </h1>
-        <h2 className="font-bebas text-4xl text-gold tracking-widest mt-1">
+        <h2 className="font-bebas text-4xl brand-gradient-text tracking-widest mt-1">
           MILAN – CORTINA 2026
         </h2>
         <p className="text-white/50 mt-3 text-lg">5 Rounds · 50 Questions · Company Trivia Night</p>
@@ -660,10 +661,13 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
       <button
         onClick={onStart}
-        className="bg-gold hover:bg-yellow-400 text-navy font-bebas text-3xl px-16 py-4 rounded-2xl transition-all shadow-2xl hover:scale-105 active:scale-95"
+        className="brand-gradient text-white font-bebas text-3xl px-16 py-4 rounded-2xl shadow-2xl hover:opacity-90 hover:scale-105 active:scale-95 transition-all"
       >
         START GAME
       </button>
+
+      {/* Gradient accent bar */}
+      <div className="w-80 h-1 brand-gradient rounded-full" />
 
       <div className="text-white/20 text-sm text-center">
         ← → arrow keys to navigate · G to show options · R to reveal · ✏ to edit questions
